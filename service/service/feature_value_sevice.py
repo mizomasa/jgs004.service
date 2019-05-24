@@ -1,4 +1,4 @@
-from learning.deep.autoencoder_model import get_feature_value
+from learning.deep.autoencoder_model import AutoEncoderModel as model
 
 class FeatureValueSevice:
     IMAGE_SIZE = 100
@@ -6,4 +6,4 @@ class FeatureValueSevice:
         pass
 
     def excute(self, img_face_base64):
-        return get_feature_value(img_face_base64, self.IMAGE_SIZE)
+        return model.get_instance().get_feature_value(img_face_base64, self.IMAGE_SIZE)

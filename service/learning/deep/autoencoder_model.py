@@ -11,60 +11,70 @@ import io
 from PIL import Image
 from util.JGSUtil import convert_to_nparray
 
-    
-def get_feature_value(base64_data, image_size=100):
-    x_test = convert_to_nparray(base64_data, image_size)
-    # モデルを読み込む
-    autoencoder = load_model(x_test)
+class AutoEncoderModel:
 
-    # 中間層の特徴量を抽出する
-    checkpoint_model = Model(autoencoder.input, 
-        autoencoder.get_layer(name='encoder_layer').output)
-    y = checkpoint_model.predict(x_test)
-    return y[0]
+    __instance = None
+    __autoencoder = None
+    __checkpoint_model  = None
+    @classmethod
+    def get_instance(cls):
+        if cls.__instance is None:
+            cls.__instance = cls()
+        return cls.__instance
+            
+    def get_feature_value(self, base64_data, image_size=100):
+        x_test = convert_to_nparray(base64_data, image_size)
+        # モデルを読み込む
+        self.load_model(x_test)
 
-def convert(base64_data, image_size):
-    img = Image.open(io.BytesIO(base64_data)).convert("RGB").img.resize(image_size, image_size)
-    data = np.asarray(img)
-    return (convert_np_array(data), convert_np_array(data))
+        # 中間層の特徴量を抽出する
+        if self.__checkpoint_model is None:
+            self.__checkpoint_model = Model(
+                self.__autoencoder.input, 
+                self.__autoencoder.get_layer(name='encoder_layer').output)
+        
+        y = self.__checkpoint_model.predict(x_test)
+        return y[0]
 
-def convert_np_array(data):
-    v=[]
-    v.append(data)
-    return np.array(v)
+    def convert(self, base64_data, image_size):
+        img = Image.open(io.BytesIO(base64_data)).convert("RGB").img.resize(image_size, image_size)
+        data = np.asarray(img)
+        return (self.convert_np_array(data), self.convert_np_array(data))
 
-# モデルの構築
-def build_model(in_shape):
-    input_img = Input(shape=in_shape)
+    def convert_np_array(self, data):
+        v=[]
+        v.append(data)
+        return np.array(v)
 
-    x = Convolution2D(64, 3, 3, activation='relu', border_mode='same')(input_img)
-    x = MaxPooling2D((2, 2), border_mode='same')(x)
-    x = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(x)
-    x = MaxPooling2D((2, 2), border_mode='same')(x)
-    x = Convolution2D(16, 3, 3, activation='relu', border_mode='same')(x)
-    encoded = MaxPooling2D((2, 2), border_mode='same', name='encoder_layer')(x)
-
-    x = Convolution2D(16, 3, 3, activation='relu', border_mode='same')(encoded)
-    x = UpSampling2D((2, 2))(x)
-    x = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(x)
-    x = UpSampling2D((2, 2))(x)
-    x = Convolution2D(64, 3, 3, activation='relu')(x)
-    x = UpSampling2D((2, 2))(x)
-    decoded = Convolution2D(3, 3, 3, activation='sigmoid', border_mode='same')(x)
-
-    autoencoder: Model = Model(input_img, decoded)
-    autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
-
-    return autoencoder
-
-# モデルを読み込む
-def load_model(x_train):
     # モデルの構築
-    autoencoder = build_model(x_train.shape[1:])
-    # モデル読み込み
-    autoencoder.load_weights('./resorce/settings/autoencoder.h5')
-    return autoencoder
+    def build_model(self, in_shape):
+        input_img = Input(shape=in_shape)
 
+        x = Convolution2D(64, 3, 3, activation='relu', border_mode='same')(input_img)
+        x = MaxPooling2D((2, 2), border_mode='same')(x)
+        x = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(x)
+        x = MaxPooling2D((2, 2), border_mode='same')(x)
+        x = Convolution2D(16, 3, 3, activation='relu', border_mode='same')(x)
+        encoded = MaxPooling2D((2, 2), border_mode='same', name='encoder_layer')(x)
 
+        x = Convolution2D(16, 3, 3, activation='relu', border_mode='same')(encoded)
+        x = UpSampling2D((2, 2))(x)
+        x = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(x)
+        x = UpSampling2D((2, 2))(x)
+        x = Convolution2D(64, 3, 3, activation='relu')(x)
+        x = UpSampling2D((2, 2))(x)
+        decoded = Convolution2D(3, 3, 3, activation='sigmoid', border_mode='same')(x)
 
+        self.__autoencoder: Model = Model(input_img, decoded)
+        self.__autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
 
+        
+
+    # モデルを読み込む
+    def load_model(self, x_train):
+        if not self.__autoencoder is None:
+            return
+        # モデルの構築
+        self.build_model(x_train.shape[1:])
+        # モデル読み込み
+        self.__autoencoder.load_weights('./resorce/settings/autoencoder.h5')
