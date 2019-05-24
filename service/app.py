@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import domain.user_face_image as fi
 import repos.annoy_wrapper as aw
 
-app = Flask(__name__, static_folder="images")
+app = Flask(__name__, static_folder="resorce")
 aw.AnnoyWrapper.get_instance()
 
 @app.route('/test_json_get', methods=['GET'])
@@ -22,7 +22,7 @@ def extractFace():
     user_image.extract_face().apply_to_classifier().extract_feature()
 
     ui_paths = aw.AnnoyWrapper.get_instance().get_ui_list(user_image.genre, user_image.feature)
-
+    ui_paths = [v.replace('./', '/') for v in ui_paths]
     return responce_as_json('OK', 'sucess', user_image.genre, ui_paths)
 
 def responce_as_json(status, message, genre = None, images = None):

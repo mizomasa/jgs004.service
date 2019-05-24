@@ -15,7 +15,8 @@ class AutoEncoderModel:
 
     __instance = None
     __autoencoder = None
-    __checkpoint_model  = None
+    __checkpoint_model = None
+
     @classmethod
     def get_instance(cls):
         if cls.__instance is None:
@@ -23,18 +24,10 @@ class AutoEncoderModel:
         return cls.__instance
             
     def get_feature_value(self, base64_data, image_size=100):
-        x_test = convert_to_nparray(base64_data, image_size)
-        # モデルを読み込む
-        self.load_model(x_test)
-
-        # 中間層の特徴量を抽出する
-        if self.__checkpoint_model is None:
-            self.__checkpoint_model = Model(
-                self.__autoencoder.input, 
-                self.__autoencoder.get_layer(name='encoder_layer').output)
-        
-        y = self.__checkpoint_model.predict(x_test)
-        return y[0]
+        target = convert_to_nparray(base64_data, image_size)
+        self.load_model(target)
+        feature = self.__checkpoint_model.predict(target)
+        return feature[0]
 
     def convert(self, base64_data, image_size):
         img = Image.open(io.BytesIO(base64_data)).convert("RGB").img.resize(image_size, image_size)
@@ -78,3 +71,8 @@ class AutoEncoderModel:
         self.build_model(x_train.shape[1:])
         # モデル読み込み
         self.__autoencoder.load_weights('./resorce/settings/autoencoder.h5')
+
+        self.__checkpoint_model = Model(
+            self.__autoencoder.input, 
+            self.__autoencoder.get_layer(name='encoder_layer').output)
+    
